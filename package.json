@@ -14,5 +14,10 @@
   },
   "webkit":{
   "plugin":true
+  },
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {
+    "yamljs": "^0.3.0"
   }
 }
