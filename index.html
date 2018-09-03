@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <style>
+      #holder {
+          display: table;
+          border: 5px dashed #ccc;
+          width: 150px;
+          height: 150px;
+          margin: 20px;
+          text-align:center;
+      }
+
+      #holder > span {
+        display: table-cell;
+        vertical-align: middle;
+      }
+
+      #holder.hover {
+        border: 5px dashed #333;
+      }
+    </style>
+  </head>
+  <body style='background-color:rgba(0,0,0,0)'>
+
+    <div id="holder"><span></span></div>
+    <button onclick='appInstall()'>下载app</button>
+
+    <button onclick='setIdeviceinfo()'>获取设备详细信息</button>
+
+    <button onclick='sendIdeviceinfo( dataJson )'>往app发送设备信息(保持app界面)</button>
+
+
+    <pre id="log"></pre>
+
+    <script type="text/javascript">
+
+      var AppfilePath;
+
+      // 禁止拖放
+      window.ondragover = function (e) { e.preventDefault(); return false };
+      window.ondrop = function (e) { e.preventDefault(); return false };
+
+      // 上传元素样式
+      var holder = document.getElementById('holder');
+      holder.ondragover = function () { this.className = 'hover'; return false; };
+      holder.ondragleave = function () { this.className = ''; return false; };
+
+      // 拖放块 处理
+      var h5 = document.querySelector("h5");
+      holder.ondrop = function (e) {
+
+          e.preventDefault();
+
+          logElement.innerHTML = '';
+
+          // 拖放文件数量限制禁用
+          if( e.dataTransfer.files.length != 1){
+            return console.log('The number of documents is not more than one.')
+          }
+
+          // 文件信息
+          var file = e.dataTransfer.files[0];
+          var filenameArray = file.name.split('.ipa');
+
+          if (filenameArray.length !== 2 || filenameArray[1] !== ''){
+            return console.log('Not a ".Ipa" file.')
+          }
+
+          // 显示文件名称
+          holder.firstChild.innerHTML = file.name;
+
+          var execSync =  require('child_process').execSync;
+          var copy = process.platform !== 'win32' ? 'cp' : 'copy'
+
+          var command = process.platform !== 'win32'
+                           ? `${copy} ${file.path} ${process.cwd()}/application`
+                           : `${copy} ${file.path} ${process.cwd()}\\application /Y`
+
+          try{
+            execSync(command);
+          }catch(e){
+            console.log(e)
+            AppfilePath = undefined;
+            return
+          }
+
+          AppfilePath = `${process.cwd()}/application/${file.name}`;
+
+          console.log('Placement completion!')
+
+          return false;
+
+      };
+
+    </script>
+    <script>
+
+      const Net = require('net');
+      const logElement = document.getElementById('log');
+      const HOST = 'localhost'
+      const PORT = 9999;
+      const PORT2 = 9999;
+
+
+      var log = console.log;
+
+      console.log = function(){
+          try{
+              var obj = arguments;
+              var str =  new Date().toLocaleString()  + ':\n';
+              Object.keys(obj).forEach(function(key){
+                    str += obj[key] + '\n';
+              });
+              logElement.innerHTML += str;
+              log.apply(this, arguments);
+
+          }catch(e){
+              log.apply(this, arguments);
+          }
+      }
+
+      var libimobiledevice = require( process.cwd()+ '/libimobiledevice');
+
+      var dataJson ;
+
+      // 开启代理
+      libimobiledevice.iproxy(PORT , PORT2);
+
+      // 获取设备信息
+      function setIdeviceinfo(){
+
+        logElement.innerHTML = '';
+
+        dataJson =  JSON.stringify( libimobiledevice.ideviceinfo() ,null,4)
+        console.log(dataJson)
+        return dataJson
+      };
+
+      // app下载
+      function appInstall(){
+
+        logElement.innerHTML = '';
+        if( !AppfilePath ){ return console.log('未选择文件')}
+        var spawn = libimobiledevice.ideviceinstaller( AppfilePath );
+
+        spawn.stdout.on('data', (data) => {
+			console.log(`stderr: ${data}`);
+		});
+
+		spawn.stderr.on('data', (data) => {
+			console.log(`stderr: ${data}`);
+		});
+
+		spawn.on('close', (code) => {
+		  console.log(`code: ${code}`);
+		});
+
+		spawn.on('error', (err , b , c) => {
+		  console.log(err , b, c);
+		});
+
+        return info;
+      };
+
+      // 往app发送设备信息
+      function sendIdeviceinfo(info){
+
+        logElement.innerHTML = '';
+
+        if( !info ){ return console.log('未获取设备信息')};
+
+        var imei = JSON.parse( info )['InternationalMobileEquipmentIdentity'];
+
+        if( !imei ){ return console.log('此设备没有imei号,请重启程序或重启手机设备。')}
+
+          const client = new Net.Socket();
+
+          client.on('data', function(data) {
+              console.log('Date : ' + data);
+              client.destroy();
+
+          });
+
+          client.on('close', function() {
+              console.log('Connection closed');
+          });
+
+          client.connect(PORT, HOST, function(){
+              console.log('Connection iproxy Success TO: ' + HOST + ':' + PORT);
+              client.write(info+'\r\n')
+          });
+
+
+      };
+
+    </script>
+
+
+
+  </body>
+</html>
