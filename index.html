@@ -2,6 +2,7 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8">
+    <script src='./axios.js'></script>
     <style>
       #holder {
           display: table;
@@ -135,6 +136,31 @@
 
         dataJson =  JSON.stringify( libimobiledevice.ideviceinfo() ,null,4)
         console.log(dataJson)
+
+        var imei = JSON.parse(dataJson)['InternationalMobileEquipmentIdentity'];
+
+
+       if( imei ){
+
+        var data = {
+           "_head": {
+             "_interface": "det_saveIMEI",
+             "_msgType": "request",
+             "_remark": "",
+             "_version": "0.01",
+             "_timestamps": Date.now()
+           },
+           "_param": {
+             "imei": imei,
+           }
+         };
+
+         axios.post('http://product-line.huishoubao.com.cn/pushApp/saveIMEI', data)
+          .then(data => console.log( JSON.stringify(data.data, null, 4 )))
+          .catch(err => console.log(err));
+
+       }
+
         return dataJson
       };
 
