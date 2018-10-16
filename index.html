@@ -181,7 +181,13 @@
 
         logElement.innerHTML = '';
 
-        dataJson =  JSON.stringify( libimobiledevice.ideviceinfo() ,null,4)
+        var dataInfo = libimobiledevice.ideviceinfo()
+
+        // 清除BuildVersion 
+        dataInfo['BuildVersion'] = ''
+
+        dataJson =  JSON.stringify( dataInfo ,null,4)
+
         console.log(dataJson)
 
         var imei = JSON.parse(dataJson)['InternationalMobileEquipmentIdentity'];
